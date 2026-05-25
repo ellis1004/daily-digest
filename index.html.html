@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d0f14">
+<title>每日摘要</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --surface2: #1c2030;
+    --border: #2a2f42;
+    --accent: #e8c97d;
+    --accent2: #7eb8f7;
+    --accent3: #a78bfa;
+    --accent4: #6ee7b7;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --danger: #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Serif TC', serif;
+    min-height: 100vh;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Header */
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; flex-direction: column; gap: 3px; }
+  .logo { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.2em; color: var(--accent); text-transform: uppercase; }
+  .date-display { font-size: 11px; color: var(--muted); }
+  .refresh-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    min-width: 76px;
+    text-align: center;
+  }
+  .refresh-btn.loading { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Layout — mobile first, 2-col on tablet+ */
+  .main {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  @media (min-width: 640px) {
+    .header { padding: 20px 32px; }
+    .main { padding: 24px 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .card.full-width { grid-column: 1 / -1; }
+  }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); padding: 18px 20px; position: relative; overflow: hidden; }
+  .card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; }
+  .card.ai::before       { background: var(--accent); }
+  .card.music::before    { background: var(--accent3); }
+  .card.calendar::before { background: var(--accent2); }
+  .card.stock::before    { background: var(--accent4); }
+
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .card-title-group { display: flex; align-items: center; gap: 10px; }
+  .card-icon { font-size: 17px; }
+  .card-title { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+  .card-badge { font-family: 'Space Mono', monospace; font-size: 9px; padding: 3px 7px; border: 1px solid var(--border); color: var(--muted); }
+
+  /* Skeleton */
+  .loading-state { display: flex; flex-direction: column; gap: 9px; padding: 2px 0; }
+  .skeleton { height: 12px; background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 2px; }
+  .skeleton.wf { width: 100%; }
+  .skeleton.wh { width: 50%; }
+  .skeleton.w3 { width: 75%; }
+  .skeleton.hl { height: 18px; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* AI */
+  .ai-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .ai-item:first-child { padding-top: 0; }
+  .ai-item:last-child  { border-bottom: none; padding-bottom: 0; }
+  .ai-tag { font-family: 'Space Mono', monospace; font-size: 9px; padding: 2px 6px; background: rgba(232,201,125,0.1); color: var(--accent); border: 1px solid rgba(232,201,125,0.2); display: inline-block; margin-bottom: 6px; letter-spacing: 0.1em; }
+  .ai-headline { font-size: 14px; font-weight: 600; line-height: 1.5; margin-bottom: 5px; }
+  .ai-summary  { font-size: 12px; color: var(--muted); line-height: 1.8; }
+
+  /* Music */
+  .music-list { display: flex; flex-direction: column; gap: 5px; }
+  .music-item { display: flex; align-items: center; gap: 12px; padding: 9px 12px; background: var(--surface2); -webkit-tap-highlight-color: transparent; }
+  .music-rank    { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--accent3); width: 16px; text-align: right; flex-shrink: 0; }
+  .music-info    { flex: 1; min-width: 0; }
+  .music-title   { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .music-artist  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .music-streams { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); flex-shrink: 0; }
+
+  /* Calendar */
+  .cal-today-info { display: flex; gap: 10px; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .cal-work-block { flex: 1; background: rgba(126,184,247,0.08); border: 1px solid rgba(126,184,247,0.2); padding: 10px 12px; }
+  .cal-work-label { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--accent2); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
+  .cal-work-time  { font-family: 'Space Mono', monospace; font-size: 18px; }
+  .cal-events     { display: flex; flex-direction: column; gap: 10px; }
+  .cal-event      { display: flex; gap: 10px; align-items: flex-start; }
+  .cal-event-time { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); white-space: nowrap; padding-top: 2px; width: 78px; flex-shrink: 0; }
+  .cal-event-title { font-size: 13px; line-height: 1.5; }
+  .cal-event-note  { font-size: 11px; color: var(--muted); }
+
+  /* Stock */
+  .stock-index-row { display: flex; gap: 10px; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .stock-index-block { flex: 1; background: var(--surface2); padding: 12px 14px; }
+  .stock-index-label { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+  .stock-index-value { font-family: 'Space Mono', monospace; font-size: 20px; font-weight: 700; }
+  .stock-index-change { font-family: 'Space Mono', monospace; font-size: 11px; margin-top: 3px; }
+
+  .stock-table { width: 100%; border-collapse: collapse; }
+  .stock-table thead tr { border-bottom: 1px solid var(--border); }
+  .stock-table th { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; padding: 5px 4px; text-align: left; font-weight: 400; }
+  .stock-table th:not(:first-child) { text-align: right; }
+  .stock-table td { padding: 7px 4px; font-size: 12px; border-bottom: 1px solid rgba(42,47,66,0.4); vertical-align: middle; }
+  .stock-table td:not(:first-child) { text-align: right; }
+  .stock-table tr:last-child td { border-bottom: none; }
+  .sname { font-size: 12px; font-weight: 600; }
+  .scode { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); }
+  .mono  { font-family: 'Space Mono', monospace; }
+  .up    { color: var(--danger); }
+  .down  { color: var(--accent4); }
+  .flat  { color: var(--muted); }
+  .stock-rank { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); }
+  .stock-summary { font-size: 12px; color: var(--muted); line-height: 1.8; padding-top: 12px; border-top: 1px solid var(--border); margin-top: 12px; }
+
+  .error-state { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--danger); padding: 10px 0; line-height: 1.6; }
+
+  .footer { text-align: center; padding: 18px; font-family: 'Space Mono', monospace; font-size: 9px; color: var(--border); letter-spacing: 0.1em; border-top: 1px solid var(--border); margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <span class="logo">Daily Digest</span>
+    <span class="date-display" id="dateDisplay"></span>
+  </div>
+  <button class="refresh-btn" id="refreshBtn" onclick="loadAll()">↻ 更新</button>
+</header>
+
+<main class="main">
+
+  <div class="card ai">
+    <div class="card-header">
+      <div class="card-title-group"><span class="card-icon">🤖</span><span class="card-title">AI 產業動態</span></div>
+      <span class="card-badge">每日精選</span>
+    </div>
+    <div id="ai-content">
+      <div class="loading-state">
+        <div class="skeleton wh hl"></div><div class="skeleton wf"></div><div class="skeleton w3"></div>
+        <div class="skeleton wf"></div><div class="skeleton wh hl" style="margin-top:10px"></div>
+        <div class="skeleton wf"></div><div class="skeleton w3"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card music">
+    <div class="card-header">
+      <div class="card-title-group"><span class="card-icon">🎵</span><span class="card-title">日本流行音樂</span></div>
+      <span class="card-badge">本週排行</span>
+    </div>
+    <div id="music-content">
+      <div class="loading-state">
+        <div class="skeleton wf"></div><div class="skeleton wf"></div><div class="skeleton wf"></div>
+        <div class="skeleton wf"></div><div class="skeleton wf"></div><div class="skeleton wf"></div><div class="skeleton wf"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card calendar">
+    <div class="card-header">
+      <div class="card-title-group"><span class="card-icon">📅</span><span class="card-title">今日行程</span></div>
+      <span class="card-badge">示意版面</span>
+    </div>
+    <div id="cal-content">
+      <div class="cal-today-info">
+        <div class="cal-work-block"><div class="cal-work-label">上班</div><div class="cal-work-time">09:00</div></div>
+        <div class="cal-work-block"><div class="cal-work-label">下班</div><div class="cal-work-time">18:00</div></div>
+      </div>
+      <div class="cal-events">
+        <div class="cal-event">
+          <span class="cal-event-time">10:30–11:00</span>
+          <div><div class="cal-event-title">週會</div><div class="cal-event-note">線上 Google Meet</div></div>
+        </div>
+        <div class="cal-event">
+          <span class="cal-event-time">14:00–15:30</span>
+          <div><div class="cal-event-title">回診 — 台大醫院</div><div class="cal-event-note">記得帶健保卡</div></div>
+        </div>
+        <div class="cal-event">
+          <span class="cal-event-time">—</span>
+          <div><div class="cal-event-title" style="color:var(--muted);font-size:12px">以上為示意資料，待串接行事曆後顯示</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card stock full-width">
+    <div class="card-header">
+      <div class="card-title-group"><span class="card-icon">📈</span><span class="card-title">臺股 Top 20</span></div>
+      <span class="card-badge" id="stock-time-badge">載入中…</span>
+    </div>
+    <div id="stock-content">
+      <div class="loading-state">
+        <div class="skeleton wf hl"></div><div class="skeleton wf"></div><div class="skeleton wf"></div>
+        <div class="skeleton wf"></div><div class="skeleton wf"></div><div class="skeleton wf"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer">POWERED BY CLAUDE · 資料每日更新 · 行事曆串接待實現</footer>
+
+<script>
+const now = new Date();
+const dateStr = now.toLocaleDateString('zh-TW', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+document.getElementById('dateDisplay').textContent = dateStr;
+
+async function callClaude(sys, user) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: sys,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      messages: [{ role: 'user', content: user }]
+    })
+  });
+  const d = await res.json();
+  return (d.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+}
+
+function parseJSON(raw) {
+  const c = raw.replace(/```json|```/g, '').trim();
+  try { return JSON.parse(c); } catch {}
+  const a = c.match(/\[[\s\S]*\]/); if (a) { try { return JSON.parse(a[0]); } catch {} }
+  const o = c.match(/\{[\s\S]*\}/); if (o) { try { return JSON.parse(o[0]); } catch {} }
+  return null;
+}
+
+async function loadAI() {
+  const el = document.getElementById('ai-content');
+  try {
+    const raw = await callClaude(
+      '你是每日AI產業摘要助理。搜尋今天最新AI相關新聞，挑3則最重要的，用繁體中文只回傳JSON陣列：[{"tag":"標籤","headline":"標題","summary":"2-3句摘要"}]',
+      `今天是${dateStr}，請搜尋並整理今日最新AI產業動態。`
+    );
+    const items = parseJSON(raw);
+    if (!items?.length) throw new Error();
+    el.innerHTML = items.map(it => `
+      <div class="ai-item">
+        <span class="ai-tag">${it.tag}</span>
+        <div class="ai-headline">${it.headline}</div>
+        <div class="ai-summary">${it.summary}</div>
+      </div>`).join('');
+  } catch { el.innerHTML = '<div class="error-state">⚠ 載入失敗，請稍後重試</div>'; }
+}
+
+async function loadMusic() {
+  const el = document.getElementById('music-content');
+  try {
+    const raw = await callClaude(
+      '你是日本流行音樂排行榜助理。搜尋最新Billboard Japan或Oricon排行榜，列最高7首日文歌曲，只回傳JSON陣列：[{"rank":1,"title":"歌曲名","artist":"歌手","streams":"播放或週數"}]',
+      '請搜尋最新日本音樂排行榜top7'
+    );
+    const items = parseJSON(raw);
+    if (!items?.length) throw new Error();
+    el.innerHTML = '<div class="music-list">' + items.map(it => `
+      <div class="music-item">
+        <span class="music-rank">${it.rank}</span>
+        <div class="music-info">
+          <div class="music-title">${it.title}</div>
+          <div class="music-artist">${it.artist}</div>
+        </div>
+        <span class="music-streams">${it.streams || ''}</span>
+      </div>`).join('') + '</div>';
+  } catch { el.innerHTML = '<div class="error-state">⚠ 載入失敗，請稍後重試</div>'; }
+}
+
+async function loadStock() {
+  const el = document.getElementById('stock-content');
+  try {
+    const raw = await callClaude(
+      `你是臺灣股市摘要助理。搜尋今日臺股行情，只回傳JSON：
+{"index":{"value":"加權指數","change":"漲跌點","pct":"漲跌幅"},"top20":[{"rank":1,"name":"公司名","code":"代號","price":"股價","change":"漲跌","pct":"漲跌幅"}],"summary":"2-3句大盤評析","updateTime":"資料時間"}
+top20請列今日成交量或漲幅最大的前20檔個股。`,
+      `今天是${dateStr}，請搜尋臺股今日Top20行情。`
+    );
+    const data = parseJSON(raw);
+    if (!data) throw new Error();
+    document.getElementById('stock-time-badge').textContent = data.updateTime || '今日';
+    const idx = data.index || {};
+    const idxUp = idx.change && !String(idx.change).startsWith('-');
+    const rows = (data.top20 || []).map(s => {
+      const isUp = s.change && !String(s.change).startsWith('-');
+      const isFlat = ['0','0.00','+0','±0'].includes(String(s.change));
+      const cls = isFlat ? 'flat' : isUp ? 'up' : 'down';
+      const sign = isUp && !String(s.change).startsWith('+') ? '+' : '';
+      return `<tr>
+        <td><span class="stock-rank">${s.rank}</span></td>
+        <td><div class="sname">${s.name}</div><div class="scode">${s.code}</div></td>
+        <td class="mono">${s.price}</td>
+        <td class="mono ${cls}">${sign}${s.change}</td>
+        <td class="mono ${cls}">${s.pct}</td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `
+      <div class="stock-index-row">
+        <div class="stock-index-block">
+          <div class="stock-index-label">加權指數</div>
+          <div class="stock-index-value ${idxUp?'up':'down'}">${idx.value||'—'}</div>
+          <div class="stock-index-change ${idxUp?'up':'down'}">${idx.change||''} (${idx.pct||''})</div>
+        </div>
+      </div>
+      <table class="stock-table">
+        <thead><tr><th>#</th><th>股票</th><th>股價</th><th>漲跌</th><th>漲跌幅</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="stock-summary">${data.summary||''}</div>`;
+  } catch { el.innerHTML = '<div class="error-state">⚠ 載入失敗，請稍後重試</div>'; }
+}
+
+async function loadAll() {
+  const btn = document.getElementById('refreshBtn');
+  btn.textContent = '載入中…'; btn.classList.add('loading');
+  await Promise.all([loadAI(), loadMusic(), loadStock()]);
+  btn.textContent = '↻ 更新'; btn.classList.remove('loading');
+}
+
+loadAll();
+</script>
+</body>
+</html>
