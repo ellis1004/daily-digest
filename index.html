@@ -352,7 +352,7 @@ async function fetchCORS(url) {
 async function loadAI() {
   const el = document.getElementById('ai-content');
   try {
-    const xml = await fetchCORS('https://news.google.com/rss/search?q=AI+人工智慧&hl=zh-TW&gl=TW&ceid=TW:zh-Hant');
+    const xml = await fetchCORS('https://feeds.feedburner.com/techcrunch/startups');
     const parser = new DOMParser();
     const doc = parser.parseFromString(xml, 'text/xml');
     const items = Array.from(doc.querySelectorAll('item')).slice(0, 5);
