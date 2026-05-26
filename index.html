@@ -418,7 +418,7 @@ async function loadStock() {
     const idxData = await idxRes.json();
 
     // TWSE 成交量前20名
-    const top20Res = await fetch(`https://www.twse.com.tw/exchangeReport/MI_INDEX20?response=json&date=${today}`);
+    const top20Res = await fetch(`https://www.twse.com.tw/exchangeReport/MI_INDEX20?response=json`);
     const top20Data = await top20Res.json();
 
     if (!top20Data || top20Data.stat !== 'OK') throw new Error('no data');
