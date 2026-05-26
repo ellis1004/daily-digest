@@ -352,7 +352,11 @@ top20請列今日成交量或漲幅最大的前20檔個股。`,
 async function loadAll() {
   const btn = document.getElementById('refreshBtn');
   btn.textContent = '載入中…'; btn.classList.add('loading');
-  await loadAI(); await loadMusic(); await loadStock();
+  await loadAI();
+await new Promise(r => setTimeout(r, 10000));
+await loadMusic();
+await new Promise(r => setTimeout(r, 10000));
+await loadStock();
   btn.textContent = '↻ 更新'; btn.classList.remove('loading');
 }
 
