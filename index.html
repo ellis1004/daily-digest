@@ -467,7 +467,7 @@ async function loadStock() {
 async function loadBaseball() {
   const el = document.getElementById('baseball-content');
   try {
-    const html = await fetchCORS('https://www.cpbl.com.tw/standings/season');
+    const html = await fetchCORS('https://tw.sports.yahoo.com/cpbl/standings/');
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     const rows = Array.from(doc.querySelectorAll('table tr')).filter(r => r.querySelector('td'));
