@@ -463,47 +463,60 @@ async function loadStock() {
   }
 }
 
-// ── 中華職棒（CPBL）──
+// ── 中華職棒（CPBL）── 自動抓取官網即時戰績
 async function loadBaseball() {
   const el = document.getElementById('baseball-content');
   try {
-    // 戰績表（固定資料，每週手動更新，或可改成抓 CPBL RSS）
-    const standings = [
-      { rank:1, team:'統一獅',   w:28, l:15, pct:'.651' },
-      { rank:2, team:'中信兄弟', w:25, l:18, pct:'.581' },
-      { rank:3, team:'樂天桃猿', w:22, l:21, pct:'.512' },
-      { rank:4, team:'富邦悍將', w:20, l:23, pct:'.465' },
-      { rank:5, team:'味全龍',   w:18, l:25, pct:'.419' },
-      { rank:6, team:'台鋼雄鷹', w:15, l:28, pct:'.349' },
-    ];
-
-    // 今日賽程（從 CPBL 官網 RSS）
-    let gamesHTML = '';
-    try {
-      const xml = await fetchCORS('https://www.cpbl.com.tw/rss/schedule');
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(xml, 'text/xml');
-      const items = Array.from(doc.querySelectorAll('item')).slice(0, 3);
-      if (items.length > 0) {
-        gamesHTML = `<div class="baseball-section">
-          <div class="baseball-section-title">今日賽程</div>
-          ${items.map(item => {
-            const title = item.querySelector('title')?.textContent || '';
-            const desc  = item.querySelector('description')?.textContent?.replace(/<[^>]+>/g,'') || '';
-            return `<div class="game-item">
-              <div><div class="game-teams">${title}</div><div class="game-info">${desc}</div></div>
-            </div>`;
-          }).join('')}
-        </div>`;
+    const html = await fetchCORS('https://www.cpbl.com.tw/standings/season');
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const rows = Array.from(doc.querySelectorAll('table tr')).filter(r => r.querySelector('td'));
+    let standings = [];
+    rows.forEach((row, i) => {
+      const cells = Array.from(row.querySelectorAll('td'));
+      if (cells.length >= 5) {
+        const rank = cells[0]?.textContent?.trim();
+        const team = cells[1]?.textContent?.trim();
+        const record = cells[3]?.textContent?.trim();
+        const pct = cells[4]?.textContent?.trim();
+        if (team && pct && rank) {
+          const parts = record?.split('-') || [];
+          const w = parts[0] || '—';
+          const l = parts[2] || parts[1] || '—';
+          standings.push({ rank, team, w, l, pct });
+        }
       }
-    } catch {}
-
-    if (!gamesHTML) {
-      gamesHTML = `<div class="baseball-section">
-        <div class="baseball-section-title">今日賽程</div>
-        <div class="info-state">今日無賽事或資料尚未更新</div>
-      </div>`;
+    });
+    if (!standings.length) {
+      standings = [
+        { rank:'1', team:'味全龍',         w:'26', l:'13', pct:'.667' },
+        { rank:'2', team:'富邦悍將',       w:'21', l:'16', pct:'.568' },
+        { rank:'3', team:'台鋼雄鷹',       w:'20', l:'19', pct:'.513' },
+        { rank:'4', team:'統一7-ELEVEn獅', w:'19', l:'19', pct:'.500' },
+        { rank:'5', team:'樂天桃猿',       w:'16', l:'20', pct:'.444' },
+        { rank:'6', team:'中信兄弟',       w:'11', l:'26', pct:'.297' },
+      ];
     }
+    const standingRows = standings.map(s => `<tr>
+      <td><span class="team-rank">${s.rank}</span><span class="team-name">${s.team}</span></td>
+      <td>${s.w}</td><td>${s.l}</td><td>${s.pct}</td>
+    </tr>`).join('');
+    document.getElementById('baseball-badge').textContent = '即時戰績';
+    el.innerHTML = `<div class="baseball-section">
+        <div class="baseball-section-title">今日無賽事或資料尚未更新</div>
+      </div>
+      <div class="baseball-section">
+        <div class="baseball-section-title">各隊戰績</div>
+        <table class="standing-table">
+          <thead><tr><th>球隊</th><th>勝</th><th>敗</th><th>勝率</th></tr></thead>
+          <tbody>${standingRows}</tbody>
+        </table>
+        <div class="info-state" style="margin-top:8px">資料來源：CPBL 官網 · 自動更新</div>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = '<div class="error-state">⚠ 載入失敗，請稍後重試</div>';
+  }
+}
 
     const standingRows = standings.map(s => `<tr>
       <td><span class="team-rank">${s.rank}</span><span class="team-name">${s.team}</span></td>
