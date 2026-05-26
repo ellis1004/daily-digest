@@ -244,7 +244,7 @@ const dateStr = now.toLocaleDateString('zh-TW', { year:'numeric', month:'long', 
 document.getElementById('dateDisplay').textContent = dateStr;
 
 async function callClaude(sys, user) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('https://daily-digest-api.ellis1004.workers.dev', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
